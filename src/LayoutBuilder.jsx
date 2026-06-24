@@ -63,10 +63,10 @@ export default function LayoutBuilder({ layout, onDragEnd, onAddTextBlock, onAdd
         }
       `}</style>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-        <button type="button" onClick={onAddTextBlock} style={{ padding: "12px 18px", backgroundColor: "#2563eb", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", minWidth: 150 }}>
+        <button type="button" onClick={onAddTextBlock} className="btn-primary btn-wide">
           Add Text Block
         </button>
-        <button type="button" onClick={onAddSpacerBlock} style={{ padding: "12px 18px", backgroundColor: "#475569", color: "#fff", border: "none", borderRadius: 12, cursor: "pointer", minWidth: 150 }}>
+        <button type="button" onClick={onAddSpacerBlock} className="btn-ghost btn-wide">
           Add Spacer
         </button>
       </div>

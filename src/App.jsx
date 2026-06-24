@@ -51,6 +51,10 @@ function App() {
   const [additionalForms, setAdditionalForms] = useState([]);
   const [copySuccess, setCopySuccess] = useState("");
   const [vibrateOnDrag, setVibrateOnDrag] = useState(true);
+  const [compactMode, setCompactMode] = useState(() => {
+    const stored = localStorage.getItem("formStackCompactMode");
+    return stored ? JSON.parse(stored) : false;
+  });
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState("text");
 
@@ -350,6 +354,10 @@ function App() {
     localStorage.setItem("formStackSelectedTemplateId", String(selectedTemplateId));
   }, [selectedTemplateId]);
 
+  useEffect(() => {
+    localStorage.setItem("formStackCompactMode", JSON.stringify(compactMode));
+  }, [compactMode]);
+
   const pageStyle = {
     minHeight: "100vh",
     backgroundColor: "#eef3ff",
@@ -390,7 +398,36 @@ function App() {
   };
 
   return (
-    <div style={pageStyle}>
+    <div style={pageStyle} className={compactMode ? "compact" : "spacious"}>
+      <style>{`
+        :root{
+          --bg: #eef3ff;
+          --card: #ffffff;
+          --muted: #475569;
+          --accent: #2563eb;
+          --success: #16a34a;
+        }
+        html,body,#root{height:100%;}
+        body{margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial}
+        .fs-table{width:100%;border-collapse:collapse;min-width:680px}
+        .fs-table th{padding:12px;text-align:left;color:#0f172a;font-weight:700;border-bottom:1px solid rgba(226,232,240,0.9)}
+        .fs-table td{padding:12px;border-bottom:1px solid rgba(236,239,244,0.9);vertical-align:top}
+        .fs-table tbody tr:hover{background:linear-gradient(90deg, rgba(248,250,255,0.6), rgba(255,255,255,0));}
+        button{transition:all 160ms ease}
+        input,select,textarea{transition:box-shadow 160ms ease,border-color 120ms ease}
+        input:focus,select:focus,textarea:focus{outline:none;box-shadow:0 8px 20px rgba(37,99,235,0.08);border-color:rgba(37,99,235,0.9)}
+        .btn-primary{background:var(--accent);color:white;border-radius:12px;padding:10px 14px;border:none;font-weight:600;box-shadow:0 10px 30px rgba(37,99,235,0.08)}
+        .btn-ghost{background:transparent;border-radius:12px;padding:10px 14px;border:1px solid rgba(15,23,42,0.06)}
+        .btn-ghost.white{color:white;border-color:rgba(255,255,255,0.16)}
+        .btn-wide{min-width:150px}
+        .btn-wide-160{min-width:160px}
+        /* Compact mode tweaks */
+        .compact input, .compact select, .compact textarea{padding:8px;border-radius:8px}
+        .compact .btn-primary, .compact .btn-ghost{padding:8px 10px;border-radius:8px}
+        .compact .fs-table th, .compact .fs-table td{padding:8px}
+        .compact h1{font-size:30px}
+        .compact h2{font-size:20px}
+      `}</style>
       <div style={pageInnerStyle}>
         <div style={{ ...cardStyle, background: "linear-gradient(135deg, #4f7dfc, #6d9cff)", color: "white" }}>
           <div style={sectionHeader}>
@@ -401,10 +438,13 @@ function App() {
               </p>
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button type="button" style={{ ...buttonStyle, backgroundColor: "rgba(255,255,255,0.16)", color: "white" }} onClick={() => setVibrateOnDrag((current) => !current)}>
+              <button type="button" className="btn-ghost white" onClick={() => setCompactMode((c) => !c)}>
+                {compactMode ? "Compact" : "Spacious"}
+              </button>
+              <button type="button" className="btn-ghost white" onClick={() => setVibrateOnDrag((current) => !current)}>
                 {vibrateOnDrag ? "Vibrate ON" : "Vibrate OFF"}
               </button>
-              <button type="button" style={{ ...buttonStyle, backgroundColor: "rgba(255,255,255,0.24)", color: "white" }} onClick={addBlankForm}>
+              <button type="button" className="btn-ghost white" onClick={addBlankForm}>
                 Add Blank Form
               </button>
             </div>
@@ -419,7 +459,7 @@ function App() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", color: "#334155", fontWeight: 600 }}>
               Choose a template
               <select value={selectedTemplateId} onChange={handleTemplateChange} style={{ minWidth: 220, padding: 12, borderRadius: 12, border: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}>
@@ -430,7 +470,7 @@ function App() {
                 ))}
               </select>
             </label>
-            <button type="button" onClick={addTemplate} style={{ ...buttonStyle, backgroundColor: "#2563eb", color: "white" }}>
+            <button type="button" onClick={addTemplate} className="btn-primary">
               Add Template
             </button>
           </div>
@@ -459,7 +499,7 @@ function App() {
                 </select>
               </label>
             </div>
-            <button type="button" onClick={addFieldToTemplate} style={{ ...buttonStyle, width: 160, backgroundColor: "#14b8a6", color: "white" }}>
+            <button type="button" onClick={addFieldToTemplate} className="btn-primary btn-wide-160">
               Add Field
             </button>
           </div>
@@ -486,7 +526,7 @@ function App() {
                 />
               </label>
             ))}
-            <button type="submit" style={{ ...buttonStyle, backgroundColor: "#2563eb", color: "white", width: 160 }}>
+            <button type="submit" className="btn-primary btn-wide-160">
               Submit Entry
             </button>
           </form>
@@ -536,7 +576,7 @@ function App() {
                           />
                         </label>
                       ))}
-                      <button type="submit" style={{ ...buttonStyle, backgroundColor: "#2563eb", color: "white" }}>
+                      <button type="submit" className="btn-primary">
                         Submit Form
                       </button>
                     </form>
@@ -568,10 +608,10 @@ function App() {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", marginBottom: 18 }}>
             <p style={{ color: "#475569", margin: 0 }}>Current block order: {layoutColumns.map((col) => col.label).join(" → ")}</p>
             <div style={{ marginLeft: "auto", display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button type="button" onClick={handleExportCsv} style={{ ...buttonStyle, backgroundColor: "#16a34a", color: "white" }}>
+              <button type="button" onClick={handleExportCsv} className="btn-primary">
                 Export CSV
               </button>
-              <button type="button" onClick={copyForExcel} style={{ ...buttonStyle, backgroundColor: "#2563eb", color: "white" }}>
+              <button type="button" onClick={copyForExcel} className="btn-primary">
                 Copy for Excel
               </button>
             </div>
@@ -582,21 +622,19 @@ function App() {
             <p style={{ color: "#475569", margin: 0 }}>No entries yet to preview.</p>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", minWidth: 680, borderCollapse: "collapse" }}>
+              <table className="fs-table">
                 <thead>
                   <tr>
                     <th style={{ borderBottom: "2px solid #e2e8f0", padding: 12, textAlign: "left", color: "#0f172a" }}>Template</th>
                     {layoutColumns.map((column) => (
-                      <th key={column.key} style={{ borderBottom: "2px solid #e2e8f0", padding: 12, textAlign: "left", color: "#0f172a" }}>
-                        {column.label}
-                      </th>
+                      <th key={column.key}>{column.label}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {entries.map((entry) => (
                     <tr key={entry.id} style={{ backgroundColor: "#ffffff" }}>
-                      <td style={{ borderBottom: "1px solid #eceff4", padding: 12 }}>{entry.templateName}</td>
+                      <td>{entry.templateName}</td>
                       {layoutColumns.map((column) => {
                         const cellValue =
                           column.type === "field"
@@ -605,7 +643,7 @@ function App() {
                             ? column.label
                             : "";
                         return (
-                          <td key={column.key} style={{ borderBottom: "1px solid #eceff4", padding: 12 }}>{cellValue}</td>
+                          <td key={column.key}>{cellValue}</td>
                         );
                       })}
                     </tr>
