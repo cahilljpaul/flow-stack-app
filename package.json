@@ -1,0 +1,16 @@
+{
+  "name": "form-stack-app",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@dnd-kit/core": "^7.0.0",
+    "@dnd-kit/sortable": "^7.0.0",
+    "@dnd-kit/utilities": "^7.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "scripts": {
+    "start": "npx serve -s public",
+    "build": "echo Build not configured"
+  }
+}
