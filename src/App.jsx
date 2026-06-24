@@ -51,6 +51,8 @@ function App() {
   const [additionalForms, setAdditionalForms] = useState([]);
   const [copySuccess, setCopySuccess] = useState("");
   const [vibrateOnDrag, setVibrateOnDrag] = useState(true);
+  const [newFieldLabel, setNewFieldLabel] = useState("");
+  const [newFieldType, setNewFieldType] = useState("text");
 
   // Layout state represents the order of blocks in the layout builder.
   const [layout, setLayout] = useState(() => [
@@ -79,11 +81,46 @@ function App() {
   function handleTemplateChange(event) {
     const newTemplateId = Number(event.target.value);
     setSelectedTemplateId(newTemplateId);
-    setFormValues({ name: "", date: "", address: "" });
+    const newTemplate = templates.find((template) => template.id === newTemplateId);
+    const newValues = newTemplate?.fields.reduce(
+      (acc, field) => ({ ...acc, [field.id]: "" }),
+      {}
+    );
+    setFormValues(newValues || { name: "", date: "", address: "" });
   }
 
   function handleInputChange(fieldId, value) {
     setFormValues((current) => ({ ...current, [fieldId]: value }));
+  }
+
+  function makeFieldId(label) {
+    return `field-${label.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "") || "custom"}-${Date.now()}`;
+  }
+
+  function addFieldToTemplate() {
+    const label = newFieldLabel.trim();
+    if (!label) {
+      return;
+    }
+
+    const fieldId = makeFieldId(label);
+    const newField = { id: fieldId, label, type: newFieldType };
+
+    setTemplates((current) =>
+      current.map((template) =>
+        template.id === selectedTemplateId
+          ? { ...template, fields: [...template.fields, newField] }
+          : template
+      )
+    );
+
+    setFormValues((current) => ({ ...current, [fieldId]: "" }));
+    setLayout((currentLayout) => [
+      ...currentLayout,
+      { id: `field-${fieldId}`, type: "field", fieldId, label },
+    ]);
+    setNewFieldLabel("");
+    setNewFieldType("text");
   }
 
   function handleSubmit(event) {
@@ -395,6 +432,35 @@ function App() {
             </label>
             <button type="button" onClick={addTemplate} style={{ ...buttonStyle, backgroundColor: "#2563eb", color: "white" }}>
               Add Template
+            </button>
+          </div>
+          <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 140px", gap: 12, alignItems: "end" }}>
+              <label style={{ display: "grid", gap: 8, color: "#334155", fontWeight: 600 }}>
+                New field label
+                <input
+                  value={newFieldLabel}
+                  onChange={(event) => setNewFieldLabel(event.target.value)}
+                  placeholder="e.g. Phone"
+                  style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 8, color: "#334155", fontWeight: 600 }}>
+                Field type
+                <select
+                  value={newFieldType}
+                  onChange={(event) => setNewFieldType(event.target.value)}
+                  style={{ width: "100%", padding: 12, borderRadius: 12, border: "1px solid #cbd5e1", backgroundColor: "#f8fafc" }}
+                >
+                  <option value="text">Text</option>
+                  <option value="date">Date</option>
+                  <option value="email">Email</option>
+                  <option value="number">Number</option>
+                </select>
+              </label>
+            </div>
+            <button type="button" onClick={addFieldToTemplate} style={{ ...buttonStyle, width: 160, backgroundColor: "#14b8a6", color: "white" }}>
+              Add Field
             </button>
           </div>
         </section>
