@@ -213,7 +213,7 @@ function App() {
         return { key: item.id, label: item.label, type: "text" };
       }
       if (item.type === "spacer") {
-        return { key: item.id, label: "Spacer", type: "spacer" };
+        return { key: item.id, label: item.height ? `Spacer (${item.height}px)` : "Spacer", type: "spacer" };
       }
       return { key: item.id, label: item.label || "Block", type: item.type };
     });
@@ -336,8 +336,21 @@ function App() {
   function addSpacerBlock() {
     setLayout((currentLayout) => [
       ...currentLayout,
-      { id: `spacer-${Date.now()}`, type: "spacer" },
+      {
+        id: `spacer-${Date.now()}`,
+        type: "spacer",
+        height: 48,
+        backgroundColor: "#f8fafc",
+        borderColor: "#dbeafe",
+        borderRadius: 14,
+      },
     ]);
+  }
+
+  function updateSpacerBlock(blockId, updates) {
+    setLayout((currentLayout) =>
+      currentLayout.map((item) => (item.id === blockId ? { ...item, ...updates } : item))
+    );
   }
 
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId);
@@ -594,7 +607,14 @@ function App() {
               <p style={{ margin: "8px 0 0", color: "#475569" }}>Drag blocks to reorder them. The active item can vibrate while dragging when the toggle is enabled.</p>
             </div>
           </div>
-          <LayoutBuilder layout={layout} onDragEnd={handleDragEnd} onAddTextBlock={addTextBlock} onAddSpacerBlock={addSpacerBlock} vibrateOnDrag={vibrateOnDrag} />
+          <LayoutBuilder
+            layout={layout}
+            onDragEnd={handleDragEnd}
+            onAddTextBlock={addTextBlock}
+            onAddSpacerBlock={addSpacerBlock}
+            onUpdateSpacerBlock={updateSpacerBlock}
+            vibrateOnDrag={vibrateOnDrag}
+          />
         </section>
 
         <section style={cardStyle}>
