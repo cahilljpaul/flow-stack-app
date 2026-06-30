@@ -1,31 +1,95 @@
 import React, { useState, useEffect } from "react";
 import LayoutBuilder from "./LayoutBuilder";
 
+function createLayoutFromFields(fields) {
+  return fields.map((field) => ({
+    id: `field-${field.id}`,
+    type: "field",
+    fieldId: field.id,
+    label: field.label,
+  }));
+}
+
+function ensureTemplateLayout(template) {
+  const fields = Array.isArray(template.fields) ? template.fields : [];
+  const layout = Array.isArray(template.layout) ? template.layout : [];
+  const fieldMap = new Map(fields.map((field) => [field.id, field]));
+
+  const normalizedLayout = layout
+    .filter((item) => item.type !== "field" || fieldMap.has(item.fieldId))
+    .map((item) => {
+      if (item.type !== "field") {
+        return item;
+      }
+      const field = fieldMap.get(item.fieldId);
+      return { ...item, label: field.label };
+    });
+
+  const existingFieldIds = new Set(
+    normalizedLayout
+      .filter((item) => item.type === "field")
+      .map((item) => item.fieldId)
+  );
+
+  const missingFieldBlocks = fields
+    .filter((field) => !existingFieldIds.has(field.id))
+    .map((field) => ({
+      id: `field-${field.id}`,
+      type: "field",
+      fieldId: field.id,
+      label: field.label,
+    }));
+
+  return {
+    ...template,
+    layout: [...normalizedLayout, ...missingFieldBlocks],
+  };
+}
+
+function normalizeTemplates(templates) {
+  return templates.map((template) => ensureTemplateLayout(template));
+}
+
+const defaultContactFields = [
+  { id: "name", label: "Name", type: "text" },
+  { id: "date", label: "Date", type: "date" },
+  { id: "address", label: "Address", type: "text" },
+];
+
+const eventEntryFields = [
+  { id: "name", label: "Attendee Name", type: "text" },
+  { id: "date", label: "Event Date", type: "date" },
+  { id: "address", label: "Venue", type: "text" },
+];
+
 const defaultTemplates = [
   {
     id: 1,
     name: "Default Contact",
-    fields: [
-      { id: "name", label: "Name", type: "text" },
-      { id: "date", label: "Date", type: "date" },
-      { id: "address", label: "Address", type: "text" },
-    ],
+    fields: defaultContactFields,
+    layout: createLayoutFromFields(defaultContactFields),
   },
   {
     id: 2,
     name: "Event Entry",
-    fields: [
-      { id: "name", label: "Attendee Name", type: "text" },
-      { id: "date", label: "Event Date", type: "date" },
-      { id: "address", label: "Venue", type: "text" },
-    ],
+    fields: eventEntryFields,
+    layout: createLayoutFromFields(eventEntryFields),
   },
 ];
 
 function App() {
   const [templates, setTemplates] = useState(() => {
     const stored = localStorage.getItem("formStackTemplates");
-    return stored ? JSON.parse(stored) : defaultTemplates;
+    if (!stored) {
+      return defaultTemplates;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      return normalizeTemplates(parsed);
+    } catch {
+      return defaultTemplates;
+    }
   });
 
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => {
@@ -35,7 +99,14 @@ function App() {
     }
 
     const storedTemplates = localStorage.getItem("formStackTemplates");
-    const parsedTemplates = storedTemplates ? JSON.parse(storedTemplates) : null;
+    let parsedTemplates = null;
+    if (storedTemplates) {
+      try {
+        parsedTemplates = normalizeTemplates(JSON.parse(storedTemplates));
+      } catch {
+        parsedTemplates = null;
+      }
+    }
     return parsedTemplates?.[0]?.id ?? defaultTemplates[0].id;
   });
 
@@ -58,23 +129,19 @@ function App() {
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState("text");
 
-  // Layout state represents the order of blocks in the layout builder.
-  const [layout, setLayout] = useState(() => [
-    { id: "field-name", type: "field", fieldId: "name", label: "Name" },
-    { id: "field-date", type: "field", fieldId: "date", label: "Date" },
-    { id: "field-address", type: "field", fieldId: "address", label: "Address" },
-  ]);
-
   // Create a new template using default fields and a generated id.
   function addTemplate() {
+    const newTemplateFields = [
+      { id: "name", label: "Name", type: "text" },
+      { id: "date", label: "Date", type: "date" },
+      { id: "address", label: "Address", type: "text" },
+    ];
+
     const newTemplate = {
       id: Date.now(),
       name: `Custom Template ${templates.length + 1}`,
-      fields: [
-        { id: "name", label: "Name", type: "text" },
-        { id: "date", label: "Date", type: "date" },
-        { id: "address", label: "Address", type: "text" },
-      ],
+      fields: newTemplateFields,
+      layout: createLayoutFromFields(newTemplateFields),
     };
 
     setTemplates((current) => [...current, newTemplate]);
@@ -111,18 +178,23 @@ function App() {
     const newField = { id: fieldId, label, type: newFieldType };
 
     setTemplates((current) =>
-      current.map((template) =>
-        template.id === selectedTemplateId
-          ? { ...template, fields: [...template.fields, newField] }
-          : template
-      )
+      current.map((template) => {
+        if (template.id !== selectedTemplateId) {
+          return template;
+        }
+
+        return {
+          ...template,
+          fields: [...template.fields, newField],
+          layout: [
+            ...template.layout,
+            { id: `field-${fieldId}`, type: "field", fieldId, label },
+          ],
+        };
+      })
     );
 
     setFormValues((current) => ({ ...current, [fieldId]: "" }));
-    setLayout((currentLayout) => [
-      ...currentLayout,
-      { id: `field-${fieldId}`, type: "field", fieldId, label },
-    ]);
     setNewFieldLabel("");
     setNewFieldType("text");
   }
@@ -204,8 +276,11 @@ function App() {
     );
   }
 
-  function getLayoutColumns() {
-    return layout.map((item) => {
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId);
+  const selectedTemplateLayout = selectedTemplate?.layout ?? [];
+
+  function getLayoutColumns(layoutItems) {
+    return layoutItems.map((item) => {
       if (item.type === "field") {
         return { key: item.id, label: item.label, type: "field", fieldId: item.fieldId };
       }
@@ -219,7 +294,7 @@ function App() {
     });
   }
 
-  const layoutColumns = getLayoutColumns();
+  const layoutColumns = getLayoutColumns(selectedTemplateLayout);
 
   function createCsvRows(entriesToExport, columns) {
     const headerRow = ["Template", ...columns.map((column) => column.label)];
@@ -319,45 +394,103 @@ function App() {
       return;
     }
 
-    setLayout((currentLayout) => {
-      const oldIndex = currentLayout.findIndex((item) => item.id === active.id);
-      const newIndex = currentLayout.findIndex((item) => item.id === over.id);
-      return moveItem(currentLayout, oldIndex, newIndex);
-    });
-  }
+    setTemplates((currentTemplates) =>
+      currentTemplates.map((template) => {
+        if (template.id !== selectedTemplateId) {
+          return template;
+        }
 
-  function addTextBlock() {
-    setLayout((currentLayout) => [
-      ...currentLayout,
-      { id: `text-${Date.now()}`, type: "text", label: `Text block ${currentLayout.length + 1}` },
-    ]);
-  }
+        const currentLayout = template.layout ?? [];
+        const oldIndex = currentLayout.findIndex((item) => item.id === active.id);
+        const newIndex = currentLayout.findIndex((item) => item.id === over.id);
+        if (oldIndex < 0 || newIndex < 0) {
+          return template;
+        }
 
-  function addSpacerBlock() {
-    setLayout((currentLayout) => [
-      ...currentLayout,
-      {
-        id: `spacer-${Date.now()}`,
-        type: "spacer",
-        height: 48,
-        backgroundColor: "#f8fafc",
-        borderColor: "#dbeafe",
-        borderRadius: 14,
-      },
-    ]);
-  }
-
-  function updateSpacerBlock(blockId, updates) {
-    setLayout((currentLayout) =>
-      currentLayout.map((item) => (item.id === blockId ? { ...item, ...updates } : item))
+        return {
+          ...template,
+          layout: moveItem(currentLayout, oldIndex, newIndex),
+        };
+      })
     );
   }
 
-  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId);
+  function addTextBlock() {
+    setTemplates((currentTemplates) =>
+      currentTemplates.map((template) => {
+        if (template.id !== selectedTemplateId) {
+          return template;
+        }
+
+        const currentLayout = template.layout ?? [];
+        return {
+          ...template,
+          layout: [
+            ...currentLayout,
+            { id: `text-${Date.now()}`, type: "text", label: `Text block ${currentLayout.length + 1}` },
+          ],
+        };
+      })
+    );
+  }
+
+  function addSpacerBlock() {
+    setTemplates((currentTemplates) =>
+      currentTemplates.map((template) => {
+        if (template.id !== selectedTemplateId) {
+          return template;
+        }
+
+        const currentLayout = template.layout ?? [];
+        return {
+          ...template,
+          layout: [
+            ...currentLayout,
+            {
+              id: `spacer-${Date.now()}`,
+              type: "spacer",
+              height: 48,
+              backgroundColor: "#f8fafc",
+              borderColor: "#dbeafe",
+              borderRadius: 14,
+            },
+          ],
+        };
+      })
+    );
+  }
+
+  function updateSpacerBlock(blockId, updates) {
+    setTemplates((currentTemplates) =>
+      currentTemplates.map((template) => {
+        if (template.id !== selectedTemplateId) {
+          return template;
+        }
+
+        return {
+          ...template,
+          layout: (template.layout ?? []).map((item) =>
+            item.id === blockId ? { ...item, ...updates } : item
+          ),
+        };
+      })
+    );
+  }
 
   useEffect(() => {
     localStorage.setItem("formStackTemplates", JSON.stringify(templates));
   }, [templates]);
+
+  useEffect(() => {
+    if (templates.length === 0) {
+      return;
+    }
+
+    const exists = templates.some((template) => template.id === selectedTemplateId);
+    if (!exists) {
+      setSelectedTemplateId(templates[0].id);
+    }
+  }, [templates, selectedTemplateId]);
 
   useEffect(() => {
     localStorage.setItem("formStackEntries", JSON.stringify(entries));
@@ -608,7 +741,7 @@ function App() {
             </div>
           </div>
           <LayoutBuilder
-            layout={layout}
+            layout={selectedTemplateLayout}
             onDragEnd={handleDragEnd}
             onAddTextBlock={addTextBlock}
             onAddSpacerBlock={addSpacerBlock}
